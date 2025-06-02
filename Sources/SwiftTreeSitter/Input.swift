@@ -42,7 +42,7 @@ final class Input {
     var internalInput: TSInput? {
         let unmanaged = Unmanaged.passUnretained(self)
 
-        return TSInput(payload: unmanaged.toOpaque(), read: readFunction, encoding: encoding)
+        return TSInput(payload: unmanaged.toOpaque(), read: readFunction, encoding: encoding, decode: nil)
     }
 }
 

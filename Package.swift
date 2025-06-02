@@ -8,21 +8,21 @@ let settings: [SwiftSetting] = [
 
 let package = Package(
 	name: "SwiftTreeSitter",
-    platforms: [
-        .macOS(.v10_13),
-        .macCatalyst(.v13),
-        .iOS(.v12),
-        .tvOS(.v12),
-        .watchOS(.v5),
-        .visionOS(.v1),
-    ],
+	platforms: [
+		.macOS(.v10_13),
+		.macCatalyst(.v13),
+		.iOS(.v12),
+		.tvOS(.v12),
+		.watchOS(.v5),
+		.visionOS(.v1),
+	],
 	products: [
 		.library(name: "SwiftTreeSitter", targets: ["SwiftTreeSitter"]),
 		.library(name: "SwiftTreeSitterLayer", targets: ["SwiftTreeSitterLayer"]),
 	],
-    dependencies: [
-        .package(url: "https://github.com/tree-sitter/tree-sitter", .upToNextMinor(from: "0.23.0")),
-    ],
+	dependencies: [
+		.package(url: "https://github.com/tree-sitter/tree-sitter", .upToNextMinor(from: "0.25.0"))
+	],
 	targets: [
 		.target(
 			name: "TestTreeSitterSwift",
@@ -34,8 +34,8 @@ let package = Package(
 		.target(
 			name: "SwiftTreeSitter",
 			dependencies: [
-                .product(name: "TreeSitter", package: "tree-sitter"),
-            ],
+				.product(name: "TreeSitter", package: "tree-sitter")
+			],
 			swiftSettings: settings
 		),
 		.testTarget(
@@ -55,4 +55,3 @@ let package = Package(
 		),
 	]
 )
-

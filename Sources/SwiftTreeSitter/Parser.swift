@@ -109,13 +109,13 @@ extension Parser {
                 return nil
             }
 
-            return ts_parser_parse_string_encoding(internalParser, nil, ptr, UInt32(dataLength), TSInputEncodingUTF16)
+            return ts_parser_parse_string_encoding(internalParser, nil, ptr, UInt32(dataLength), TSInputEncodingUTF16LE)
         })
 
         return optionalTreePtr.flatMap({ MutableTree(internalTree: $0) })
     }
 
-	public func parse(tree: Tree?, encoding: TSInputEncoding = TSInputEncodingUTF16, readBlock: ReadBlock) -> MutableTree? {
+	public func parse(tree: Tree?, encoding: TSInputEncoding = TSInputEncodingUTF16LE, readBlock: ReadBlock) -> MutableTree? {
 		return withoutActuallyEscaping(readBlock) { escapingClosure in
 			let input = Input(encoding: encoding, readBlock: escapingClosure)
 
@@ -131,7 +131,7 @@ extension Parser {
 		}
     }
 
-	public func parse(tree: MutableTree?, encoding: TSInputEncoding = TSInputEncodingUTF16, readBlock: ReadBlock) -> MutableTree? {
+	public func parse(tree: MutableTree?, encoding: TSInputEncoding = TSInputEncodingUTF16LE, readBlock: ReadBlock) -> MutableTree? {
 		parse(tree: tree?.tree, encoding: encoding, readBlock: readBlock)
 	}
 

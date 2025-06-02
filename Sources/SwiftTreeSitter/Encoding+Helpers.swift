@@ -7,9 +7,9 @@ extension String.Encoding {
         case .utf8:
             return TSInputEncodingUTF8
         case .utf16LittleEndian:
-            return TSInputEncodingUTF16
+            return TSInputEncodingUTF16LE
         case .utf16BigEndian:
-            return TSInputEncodingUTF16
+            return TSInputEncodingUTF16BE
         default:
             return nil
         }
