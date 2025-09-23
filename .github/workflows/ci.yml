@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - 'README.md'
+      - '**/*.docc/**'
       - 'CODE_OF_CONDUCT.md'
       - '.editorconfig'
       - '.spi.yml'
@@ -13,13 +14,17 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test
     timeout-minutes: 30
     runs-on: macOS-15
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.1.app
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app
     strategy:
       matrix:
         destination:
@@ -40,24 +45,15 @@ jobs:
   linux_test:
     name: Test Linux
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get -y install libcurl4-openssl-dev
-      - name: Install swiftly
-        run: |
-          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
-          tar zxf swiftly-$(uname -m).tar.gz && \
-          ./swiftly init --quiet-shell-followup --skip-install && \
-          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
-          hash -r
-          echo "$HOME/.local/share/swiftly/bin" >> $GITHUB_PATH
-      - name: Install the latest Swift toolchain
-        run: swiftly install latest
+      - name: Swiftly
+        uses: vapor/swiftly-action@v0.2.0
+        with:
+          toolchain: 6.1.0
       - name: Test
         run: swift test
