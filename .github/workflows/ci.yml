@@ -45,8 +45,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install libcurl4-openssl-dev
       - name: Install swiftly
-        run: curl -L https://swiftlang.github.io/swiftly/swiftly-install.sh | bash -s -- -y
+        run: |
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
+          tar zxf swiftly-$(uname -m).tar.gz && \
+          ./swiftly init --quiet-shell-followup --skip-install && \
+          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
+          hash -r
+          echo "$HOME/.local/share/swiftly/bin" >> $GITHUB_PATH
       - name: Install the latest Swift toolchain
         run: swiftly install latest
       - name: Test
