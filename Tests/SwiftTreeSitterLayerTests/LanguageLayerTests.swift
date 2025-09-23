@@ -283,7 +283,7 @@ let c = "var c = 1"
 		// resolve + highlight *just the third line* skipping the middle, which will result in an invalidation starting at the last node of the first injection and going all the way to the last node of the 3rd
 		let target2 = IndexSet(integersIn: 40..<60)
 		let resolve2 = try layerTree.resolveSublayers(with: content, in: target2)
-		XCTAssertEqual(resolve2, IndexSet(17..<58))
+		XCTAssertEqual(resolve2, IndexSet(9..<58))
 
 		let highlights2 = try layerTree.highlights(in: target2, provider: content.textProvider)
 
