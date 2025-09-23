@@ -33,7 +33,7 @@ jobs:
           - "platform=iOS Simulator,name=iPhone 16"
           - "platform=tvOS Simulator,name=Apple TV"
           - "platform=watchOS Simulator,name=Apple Watch Series 10 (42mm)"
-          - "platform=visionOS Simulator,name=Apple Vision Pro"
+          - "platform=visionOS Simulator,name=Apple Vision Pro,OS=2.5"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
