@@ -99,8 +99,8 @@ extension Parser {
     public typealias ReadBlock = (Int, Point) -> Data?
 	public typealias DataSnapshotProvider = @Sendable (Int, Point) -> Data?
 
-    public func parse(_ string: String) -> MutableTree? {
-        guard let data = string.data(using: encoding) else { return nil }
+    public func parse(_ source: String) -> MutableTree? {
+        guard let data = source.data(using: encoding) else { return nil }
 
         let dataLength = data.count
 
@@ -112,7 +112,7 @@ extension Parser {
             return ts_parser_parse_string_encoding(internalParser, nil, ptr, UInt32(dataLength), TSInputEncodingUTF16LE)
         })
 
-        return optionalTreePtr.flatMap({ MutableTree(internalTree: $0) })
+		return optionalTreePtr.flatMap({ MutableTree(internalTree: $0,source: source) })
     }
 
 	public func parse(tree: Tree?, encoding: TSInputEncoding = TSInputEncodingUTF16LE, readBlock: ReadBlock) -> MutableTree? {
@@ -127,7 +127,7 @@ extension Parser {
 				return nil
 			}
 
-			return MutableTree(internalTree: newTree)
+			return MutableTree(internalTree: newTree,source: tree?.source)
 		}
     }
 

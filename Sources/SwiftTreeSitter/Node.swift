@@ -192,6 +192,29 @@ extension Node {
         
         return Node(internalNode: n, internalTree: internalTree)
     }
+	
+	/// The text of the node
+	public var text: String? {
+		// Tree.source holds the original source text. It can be empty if the parse
+		// was performed without a backing string; handle that gracefully.
+		let source = self.internalTree.source
+		guard source != nil else { return nil }
+
+		// byteRange is in UTF-16LE bytes. Convert to UTF-16 code unit offsets.
+		let lowerUnits = Int(byteRange.lowerBound / 2)
+		let upperUnits = Int(byteRange.upperBound / 2)
+
+		// Clamp to valid bounds of the source’s UTF-16 view.
+		let utf16Count = source!.utf16.count
+		let startUnits = max(0, min(lowerUnits, utf16Count))
+		let endUnits = max(startUnits, min(upperUnits, utf16Count))
+
+		// Convert UTF-16 code unit offsets to String.Index and slice.
+		let startIndex = String.Index(utf16Offset: startUnits, in: source!)
+		let endIndex = String.Index(utf16Offset: endUnits, in: source!)
+
+		return String(source![startIndex..<endIndex])
+	}
 }
 
 extension Node {
