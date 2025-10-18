@@ -121,11 +121,28 @@ extension LanguageConfiguration {
 	}()
 
 	static func bundleQueriesDirectoryURL(for bundleName: String) -> URL? {
-        let bundlePath = bundleContainerURL?.appendingPathComponent("\(bundleName).bundle", isDirectory: true)
-#if os(iOS) || os(tvOS) || os(visionOS) || os(watchOS)
+#if os(macOS) || targetEnvironment(macCatalyst)
+		let bundlePath = bundleContainerURL?.appendingPathComponent("\(bundleName).bundle", isDirectory: true)
+		
+		guard let bundlePath else { return nil }
+		
+		// Depending on how you compile a macOS executable, this path varies.
+		// Couldn't nail down when with compiler flags
+		//     (Xcode seems to create the longer paths, SwiftPM the shorter ones)
+		let shortQueriesPath = bundlePath.appendingPathComponent("queries", isDirectory: true)
+		if FileManager.default.fileExists(atPath: shortQueriesPath.path) {
+			return shortQueriesPath
+		}
+		return bundlePath.appendingPathComponent("Contents/Resources/queries", isDirectory: true)
+#elseif os(iOS) || os(tvOS) || os(visionOS) || os(watchOS)
+		let bundlePath = bundleContainerURL?.appendingPathComponent("\(bundleName).bundle", isDirectory: true)
+		
         return bundlePath?.appendingPathComponent("queries", isDirectory: true)
 #else
-        return bundlePath?.appendingPathComponent("Contents/Resources/queries", isDirectory: true)
+		// Linux and Windows use .resources instead of .bundle
+		let resourcePath = bundleContainerURL?.appendingPathComponent("\(bundleName).resources", isDirectory: true)
+		
+		return resourcePath?.appendingPathComponent("queries", isDirectory: true)
 #endif
 	}
 }
