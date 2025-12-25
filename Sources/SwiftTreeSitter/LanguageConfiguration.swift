@@ -127,7 +127,7 @@ extension LanguageConfiguration {
         return bundlePath?.appendingPathComponent("queries", isDirectory: true)
 #else
 		// Linux and Windows use .resources instead of .bundle
-		let bundlePath = Bundle.main.url(forResource: bundleName, withExtension: "resources")
+		let resourcePath = Bundle.main.url(forResource: bundleName, withExtension: "resources")
 		return resourcePath?.appendingPathComponent("queries", isDirectory: true)
 #endif
 	}
