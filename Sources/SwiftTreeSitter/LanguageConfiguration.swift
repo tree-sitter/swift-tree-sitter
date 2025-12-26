@@ -109,21 +109,9 @@ extension LanguageConfiguration {
 }
 
 extension LanguageConfiguration {
-	static let bundleContainerURL: URL? = {
-		let mainBundle = Bundle.main
-
-		guard mainBundle.isXCTestRunner else {
-			return mainBundle.resourceURL
-		}
-
-		// we have to go up one directory, because Xcode puts SPM dependency bundles
-		return Bundle.testBundle?.bundleURL.deletingLastPathComponent()
-	}()
-
 	static func bundleQueriesDirectoryURL(for bundleName: String) -> URL? {
 #if os(macOS) || targetEnvironment(macCatalyst)
-		let bundlePath = bundleContainerURL?.appendingPathComponent("\(bundleName).bundle", isDirectory: true)
-		
+		let bundlePath = Bundle.main.url(forResource: bundleName, withExtension: "bundle")
 		guard let bundlePath else { return nil }
 		
 		// Depending on how you compile a macOS executable, this path varies.
@@ -135,13 +123,11 @@ extension LanguageConfiguration {
 		}
 		return bundlePath.appendingPathComponent("Contents/Resources/queries", isDirectory: true)
 #elseif os(iOS) || os(tvOS) || os(visionOS) || os(watchOS)
-		let bundlePath = bundleContainerURL?.appendingPathComponent("\(bundleName).bundle", isDirectory: true)
-		
+		let bundlePath = Bundle.main.url(forResource: bundleName, withExtension: "bundle")
         return bundlePath?.appendingPathComponent("queries", isDirectory: true)
 #else
 		// Linux and Windows use .resources instead of .bundle
-		let resourcePath = bundleContainerURL?.appendingPathComponent("\(bundleName).resources", isDirectory: true)
-		
+		let resourcePath = Bundle.main.url(forResource: bundleName, withExtension: "resources")
 		return resourcePath?.appendingPathComponent("queries", isDirectory: true)
 #endif
 	}
