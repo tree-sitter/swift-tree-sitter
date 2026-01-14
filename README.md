@@ -33,21 +33,32 @@ And yet there's more! If you are looking a higher-level system for syntax highli
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter")
+    .package(url: "https://github.com/tree-sitter/swift-tree-sitter"),
 ],
 targets: [
     .target(
         name: "MySwiftTreeSitterTarget",
-        dependencies: ["SwiftTreeSitter"]
+        dependencies: [
+            .product(name: "SwiftTreeSitter", package: "swift-tree-sitter"),
+        ]
     ),
     .target(
         name: "MySwiftTreeSitterLayerTarget",
         dependencies: [
-            .product(name: "SwiftTreeSitterLayer", package: "SwiftTreeSitter"),
+            .product(name: "SwiftTreeSitterLayer", package: "swift-tree-sitter"),
         ]
     ),
 ]
 ```
+
+> Note: If you are using Package Description version 5.5 (or later), you will need to provide slightly different parameters to [`Package.Dependency.package`](https://docs.swift.org/swiftpm/documentation/packagedescription/package/dependency) to integrate this library into your project:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/tree-sitter/swift-tree-sitter", revision: "main"),
+]
+```
+> Other options for specifying the version of the library to integrate are possible -- see [`Package.Dependency.package`](https://docs.swift.org/swiftpm/documentation/packagedescription/package/dependency) more information.
 
 ## Range Translation
 
