@@ -33,17 +33,22 @@ And yet there's more! If you are looking a higher-level system for syntax highli
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter")
+    .package(url: "https://github.com/tree-sitter/swift-tree-sitter"),
 ],
 targets: [
     .target(
         name: "MySwiftTreeSitterTarget",
-        dependencies: ["SwiftTreeSitter"]
+        dependencies: [
+            .product(name: "SwiftTreeSitter", package: "swift-tree-sitter", from: "0.9.0"),
+        ]
     ),
     .target(
         name: "MySwiftTreeSitterLayerTarget",
         dependencies: [
-            .product(name: "SwiftTreeSitterLayer", package: "SwiftTreeSitter"),
+            .product(name: "SwiftTreeSitter", package: "swift-tree-sitter"),
+
+            // an optional product with additional features
+            .product(name: "SwiftTreeSitterLayer", package: "swift-tree-sitter"),
         ]
     ),
 ]
