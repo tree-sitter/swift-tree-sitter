@@ -39,26 +39,20 @@ targets: [
     .target(
         name: "MySwiftTreeSitterTarget",
         dependencies: [
-            .product(name: "SwiftTreeSitter", package: "swift-tree-sitter"),
+            .product(name: "SwiftTreeSitter", package: "swift-tree-sitter", from: "0.9.0"),
         ]
     ),
     .target(
         name: "MySwiftTreeSitterLayerTarget",
         dependencies: [
+            .product(name: "SwiftTreeSitter", package: "swift-tree-sitter"),
+
+            // an optional product with additional features
             .product(name: "SwiftTreeSitterLayer", package: "swift-tree-sitter"),
         ]
     ),
 ]
 ```
-
-> Note: If you are using Package Description version 5.5 (or later), you will need to provide slightly different parameters to [`Package.Dependency.package`](https://docs.swift.org/swiftpm/documentation/packagedescription/package/dependency) to integrate this library into your project:
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/tree-sitter/swift-tree-sitter", revision: "main"),
-]
-```
-> Other options for specifying the version of the library to integrate are possible -- see [`Package.Dependency.package`](https://docs.swift.org/swiftpm/documentation/packagedescription/package/dependency) more information.
 
 ## Range Translation
 
