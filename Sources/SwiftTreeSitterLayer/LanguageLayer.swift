@@ -142,7 +142,7 @@ extension LanguageLayer {
 }
 
 extension LanguageLayer {
-	private func applyEdit(_ edit: InputEdit) {
+	public func applyEdit(_ edit: InputEdit) {
 		state.applyEdit(edit)
 
 		// and now update the included ranges
@@ -173,7 +173,7 @@ extension LanguageLayer {
 		return invalidations
 	}
 
-	private func parse(with content: Content, affecting affectedSet: IndexSet, resolveSublayers resolve: Bool) -> IndexSet {
+	public func parse(with content: Content, affecting affectedSet: IndexSet, resolveSublayers resolve: Bool) -> IndexSet {
 		// after this completes, affectedSet is valid again
 		var set = parse(with: content)
 
