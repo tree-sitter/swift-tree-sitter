@@ -174,7 +174,7 @@ extension LanguageLayer {
 	}
 
 	private func parse(with content: Content, affecting affectedSet: IndexSet, resolveSublayers resolve: Bool) -> IndexSet {
-		// afer this completes, affectedSet is valid again
+		// after this completes, affectedSet is valid again
 		var set = parse(with: content)
 
 		set.formUnion(affectedSet)
