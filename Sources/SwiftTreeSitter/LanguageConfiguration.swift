@@ -110,6 +110,22 @@ extension LanguageConfiguration {
 
 extension LanguageConfiguration {
 	static func bundleQueriesDirectoryURL(for bundleName: String) -> URL? {
+#if DEBUG
+		if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+			let bundles = Bundle.allBundles + Bundle.allFrameworks
+			
+			for bundle in bundles {
+				if let bundlePath = bundle.url(forResource: bundleName, withExtension: "bundle") {
+					let short = bundlePath.appendingPathComponent("queries", isDirectory: true)
+					if FileManager.default.fileExists(atPath: short.path) {
+						return short
+					}
+					return bundlePath.appendingPathComponent("Contents/Resources/queries", isDirectory: true)
+				}
+			}
+		}
+#endif
+		
 #if os(macOS) || targetEnvironment(macCatalyst)
 		let bundlePath = Bundle.main.url(forResource: bundleName, withExtension: "bundle")
 		guard let bundlePath else { return nil }
