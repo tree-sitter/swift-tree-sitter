@@ -1,6 +1,15 @@
 import Foundation
 import TreeSitter
 
+/// Stores a query capture name together with its parsed hierarchy.
+private struct CachedCaptureName: Sendable {
+    /// The complete capture name returned by Tree-sitter.
+    let value: String
+
+    /// The hierarchy used by highlighting and injection consumers.
+    let components: [String]
+}
+
 public enum QueryError: Error {
     case none
     case syntax(UInt32)
@@ -46,6 +55,9 @@ public final class Query: Sendable {
     let internalQueryPointer: SendableOpaquePointer
     let predicateList: [[Predicate]]
 
+    /// Keeps capture names out of the cursor's per-capture hot path.
+    private let captureNames: [CachedCaptureName?]
+
     /// Construct a query object from scm data
     ///
     /// This operation has do to a lot of work, especially if any
@@ -74,6 +86,18 @@ public final class Query: Sendable {
 
         self.internalQueryPointer = SendableOpaquePointer(queryPtr)
         self.predicateList = try PredicateParser().predicates(in: queryPtr)
+        self.captureNames = (0..<Int(ts_query_capture_count(queryPtr))).map { id in
+            var length: UInt32 = 0
+            guard let value = ts_query_capture_name_for_id(queryPtr, UInt32(id), &length) else {
+                return nil
+            }
+
+            let name = String(cString: value)
+            return CachedCaptureName(
+                value: name,
+                components: name.components(separatedBy: ".")
+            )
+        }
     }
 
 	/// Construct a query object from scm data located at a url
@@ -137,13 +161,23 @@ public final class Query: Sendable {
 	}
 
     public func captureName(for id: Int) -> String? {
-        var length: UInt32 = 0
-
-        guard let cStr = ts_query_capture_name_for_id(internalQuery, UInt32(id), &length) else {
+        guard captureNames.indices.contains(id) else {
             return nil
         }
 
-        return String(cString: cStr)
+        return captureNames[id]?.value
+    }
+
+    /// Returns the cached name and hierarchy for a capture identifier.
+    ///
+    /// - Parameter id: The Tree-sitter capture identifier.
+    /// - Returns: The cached capture name when the identifier is valid.
+    fileprivate func cachedCaptureName(for id: Int) -> CachedCaptureName? {
+        guard captureNames.indices.contains(id) else {
+            return nil
+        }
+
+        return captureNames[id]
     }
 
     public func stringName(for id: Int) -> String? {
@@ -181,27 +215,27 @@ public struct QueryCapture {
 	/// The language injection depth.
 	public let depth: Int
 
-	init?(tsCapture: TSQueryCapture, internalTree: Tree, name: String?, patternIndex: Int, metadata: [String: String], depth: Int) {
+	init?(tsCapture: TSQueryCapture, internalTree: Tree, nameComponents: [String], patternIndex: Int, metadata: [String: String], depth: Int) {
 		guard let node = Node(internalNode: tsCapture.node, internalTree: internalTree) else {
             return nil
         }
 
         self.node = node
         self.index = Int(tsCapture.index)
-        self.nameComponents = name?.components(separatedBy: ".") ?? []
+        self.nameComponents = nameComponents
         self.patternIndex = patternIndex
 		self.metadata = metadata
 		self.depth = depth
     }
 
 	init?(tsCapture: TSQueryCapture, internalTree: Tree, query: Query?, patternIndex: Int, depth: Int) {
-		let name = query?.captureName(for: Int(tsCapture.index))
+		let captureName = query?.cachedCaptureName(for: Int(tsCapture.index))
 
 		let predicates = query?.predicates(for: patternIndex) ?? []
 
-		let metadata = name.map { QueryCapture.evaluateDirectives(predicates, with: $0) } ?? [:]
+		let metadata = captureName.map { QueryCapture.evaluateDirectives(predicates, with: $0.value) } ?? [:]
 
-		self.init(tsCapture: tsCapture, internalTree: internalTree, name: name, patternIndex: patternIndex, metadata: metadata, depth: depth)
+		self.init(tsCapture: tsCapture, internalTree: internalTree, nameComponents: captureName?.components ?? [], patternIndex: patternIndex, metadata: metadata, depth: depth)
 	}
 
 	private static func evaluateDirectives(_ predicates: [Predicate], with name: String) -> [String: String] {
