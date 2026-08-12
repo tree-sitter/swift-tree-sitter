@@ -1,9 +1,9 @@
 import XCTest
+import Testing
 
 import SwiftTreeSitter
 import SwiftTreeSitterLayer
 import TestTreeSitterSwift
-
 
 extension Point {
 	init(_ row: Int, _ column: Int) {
@@ -13,7 +13,7 @@ extension Point {
 
 #if !os(WASI)
 final class LanguageLayerTests: XCTestCase {
-	private static let swiftConfig: LanguageConfiguration = {
+	static let swiftConfig: LanguageConfiguration = {
 		let language = Language(language: tree_sitter_swift())
 
 		let queryText = """
@@ -28,7 +28,7 @@ final class LanguageLayerTests: XCTestCase {
 									 queries: [.highlights: highlightQuery])
 	}()
 
-	private static let selfInjectingSwiftConfig: LanguageConfiguration = {
+	static let selfInjectingSwiftConfig: LanguageConfiguration = {
 		let queryText = """
 ((line_str_text) @injection.content (#set! injection.language "swift"))
 """
@@ -45,26 +45,6 @@ final class LanguageLayerTests: XCTestCase {
 }
 
 extension LanguageLayerTests {
-	func testExecuteQuery() throws {
-		let config = LanguageLayer.Configuration()
-		let tree = try LanguageLayer(languageConfig: Self.swiftConfig, configuration: config)
-
-		let text = """
-func main() {
-}
-"""
-		tree.replaceContent(with: text)
-
-		let cursor = try tree.executeQuery(.highlights, in: NSRange(0..<text.utf16.count))
-		let highlights = cursor.highlights()
-
-		let expected = [
-			NamedRange(name: "keyword.function", range: NSRange(0..<4), pointRange: Point(row: 0, column: 0)..<Point(row: 0, column: 8)),
-		]
-
-		XCTAssertEqual(highlights, expected)
-	}
-
 	func testSingleInjection() throws {
 		let config = LanguageLayer.Configuration(languageProvider: { name in
 			precondition(name == "swift")
@@ -337,3 +317,88 @@ let a = "var a = 1"
 }
 
 #endif
+
+struct NewLanguageLayerTests {
+	@Test
+	func executeQuery() async throws {
+		let config = LanguageLayer.Configuration()
+		let tree = try LanguageLayer(languageConfig: LanguageLayerTests.swiftConfig, configuration: config)
+
+		let text = """
+func main() {
+}
+"""
+		tree.replaceContent(with: text)
+
+		let cursor = try tree.executeQuery(.highlights, in: NSRange(0..<text.utf16.count))
+		let highlights = cursor.highlights()
+
+		let expected = [
+			NamedRange(name: "keyword.function", range: NSRange(0..<4), pointRange: Point(row: 0, column: 0)..<Point(row: 0, column: 8)),
+		]
+
+		#expect(highlights == expected)
+	}
+
+	@Test
+	func sublayersAreResolvedAfterEdit() async throws {
+		let layerConfig = LanguageLayer.Configuration { name in
+			precondition(name == "swift")
+			print("asked for \(name)")
+
+			return LanguageLayerTests.swiftConfig
+		}
+		
+		let layer = try LanguageLayer(
+			languageConfig: LanguageLayerTests.selfInjectingSwiftConfig,
+			configuration: layerConfig
+		)
+
+		let text = """
+let host = 0
+"""
+		layer.replaceContent(with: text)
+
+		let initialRange = NSRange(0..<text.utf16.count)
+
+		let initialExpected = [
+			NamedRange(name: "keyword", range: NSRange(0..<3), pointRange: Point(row: 0, column: 0)..<Point(row: 0, column: 6)),
+		]
+
+		try #expect(initialExpected == layer.executeQuery(.highlights, in: initialRange).highlights())
+
+		let newText = """
+let host = "let inner = 1"
+"""
+		let editedRange = NSRange(0..<newText.utf16.count)
+
+		let edit = InputEdit(
+			startByte: 11*2,
+			oldEndByte: 12*2,
+			newEndByte: 26*2,
+			startPoint: Point(0, 11*2),
+			oldEndPoint: Point(0, 12*2),
+			newEndPoint: Point(0, 26*2)
+		)
+
+		// turn off resolution explicitly here
+		let invalidation = layer.didChangeContent(.init(string: newText), using: edit, resolveSublayers: false)
+
+		#expect(invalidation == IndexSet(integersIn: 11..<26))
+
+		// this is stale, but we have not done layer resolution yet
+		try #expect(initialExpected == layer.executeQuery(.highlights, in: editedRange).highlights())
+
+		// now, actually perform the resolution
+		let resolutionInvalidation = try layer.resolveSublayers(with: .init(string: newText), in: editedRange)
+
+		#expect(resolutionInvalidation == IndexSet(integersIn: 12..<25))
+
+		let editedExpected = [
+			NamedRange(name: "keyword", range: NSRange(0..<3), pointRange: Point(row: 0, column: 0)..<Point(row: 0, column: 6)),
+			NamedRange(name: "keyword", range: NSRange(12..<15), pointRange: Point(row: 0, column: 12*2)..<Point(row: 0, column: 15*2)),
+		]
+
+		try #expect(editedExpected == layer.executeQuery(.highlights, in: editedRange).highlights())
+	}
+}

@@ -215,7 +215,7 @@ extension LanguageLayer {
 
 	/// Inform the layer tree that content has changed.
 	///
-	/// By default, this function will eagerly resolve sublayers. However, there could be a significant benefit to deferring that work until a query. Layer resolution is always performed at that point anyways, because it is needed to compute query results.
+	/// By default, this function will eagerly resolve sublayers. However, there could be a significant benefit to deferring that work until a query. If you do this, sublayer resolution must be manually peformed before queries can guarantee accurate results.
 	///
 	/// - Parameter content: The means of determining the state of the current content.
 	/// - Parameter edit: Describes how the content has changed
@@ -278,7 +278,10 @@ extension LanguageLayer: Queryable {
 
 		return LanguageLayerQueryCursor(target: target, set: set)
 	}
-	
+
+	/// Executes a query against the current parse state.
+	///
+	/// - Note: If either `parse()` or `didChangeContent()` have been executed with sublayer resolution disabled, `resolveSublayers(with:, in:)` must be called before this method to ensure accurate matches in all sublayers.
 	public func executeQuery(_ queryDef: Query.Definition, in set: IndexSet) throws -> LanguageTreeQueryCursor {
 		guard let treeSnapshot = snapshot(in: set) else {
 			throw LanguageLayerError.noRootNode
@@ -356,6 +359,8 @@ extension LanguageLayer {
 	/// Recursively resolve any language injections within the set.
 	///
 	/// This process is manual to offer the greatest control to clients.
+	///
+	/// - Returns: The set of content indices that have been invalidated as part of the resolution.
 	public func resolveSublayers(with content: LanguageLayer.Content, in set: IndexSet) throws -> IndexSet {
 		guard supportsNestedLanguages else {
 			return IndexSet()
@@ -385,5 +390,14 @@ extension LanguageLayer {
 		}
 
 		return invalidations
+	}
+
+	/// Recursively resolve any language injections within the set.
+	///
+	/// This process is manual to offer the greatest control to clients.
+	///
+	/// - Returns: The set of content indices that have been invalidated as part of the resolution.
+	public func resolveSublayers(with content: LanguageLayer.Content, in range: NSRange) throws -> IndexSet {
+		try resolveSublayers(with: content, in: IndexSet(integersIn: range))
 	}
 }
