@@ -73,6 +73,10 @@ func main() {
 """
 		let queryData = try XCTUnwrap(queryText.data(using: .utf8))
 		let query = try Query(language: language, data: queryData)
+		let captureNames = (0..<query.captureCount).compactMap(query.captureName(for:))
+
+		XCTAssertEqual(captureNames, ["a", "a.b.c", "a.b"])
+		XCTAssertNil(query.captureName(for: query.captureCount))
 
 		let text = """
 func main() {
