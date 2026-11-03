@@ -289,6 +289,15 @@ let c = "var c = 1"
 		XCTAssertEqual(highlights3, expected3)
 	}
 
+	func testInsertingAtStartOfInjection() throws {
+		let text = """
+let a = "ar b = 1"
+"""
+
+		// the edited included range starts after the inserted character, but the injection does not
+		try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(9..<9), with: "v")
+	}
+
 	func testResolvingInjectionAcrossDisjointSet() throws {
 		let config = LanguageLayer.Configuration(languageProvider: { name in
 			precondition(name == "swift")
@@ -348,6 +357,69 @@ let a = "var a = 1"
 		XCTAssertThrowsError(try tree.highlights(in: NSRange(0..<10), provider: { _, _ in nil })) { error in
 			XCTAssertEqual(error as? LanguageLayerError, LanguageLayerError.queryUnavailable("Swift", .highlights))
 		}
+	}
+}
+
+extension LanguageLayerTests {
+	@discardableResult
+	private func assertIncrementalParseMatchesFreshParse(
+		of text: String,
+		replacing range: NSRange,
+		with replacement: String,
+		file: StaticString = #filePath,
+		line: UInt = #line
+	) throws -> IndexSet {
+		let config = LanguageLayer.Configuration(languageProvider: { name in
+			precondition(name == "swift")
+
+			return Self.swiftConfig
+		})
+
+		let newText = (text as NSString).replacingCharacters(in: range, with: replacement)
+		let newEnd = range.location + replacement.utf16.count
+
+		func point(at location: Int, in string: String) -> Point {
+			let lines = (string as NSString).substring(to: location).components(separatedBy: "\n")
+
+			return Point(lines.count - 1, lines.last!.utf16.count * 2)
+		}
+
+		let edit = InputEdit(
+			startByte: UInt32(range.location * 2),
+			oldEndByte: UInt32(range.upperBound * 2),
+			newEndByte: UInt32(newEnd * 2),
+			startPoint: point(at: range.location, in: text),
+			oldEndPoint: point(at: range.upperBound, in: text),
+			newEndPoint: point(at: newEnd, in: newText)
+		)
+
+		let layer = try LanguageLayer(languageConfig: Self.selfInjectingSwiftConfig, configuration: config)
+		layer.replaceContent(with: text)
+
+		let content = LanguageLayer.Content(string: newText)
+		let invalidation = layer.didChangeContent(content, using: edit, resolveSublayers: false)
+		let resolution = try layer.resolveSublayers(with: content, in: invalidation)
+
+		let freshLayer = try LanguageLayer(languageConfig: Self.selfInjectingSwiftConfig, configuration: config)
+		freshLayer.replaceContent(with: newText)
+
+		let fullRange = NSRange(0..<newText.utf16.count)
+
+		XCTAssertEqual(
+			try layer.highlights(in: fullRange, provider: { _, _ in nil }),
+			try freshLayer.highlights(in: fullRange, provider: { _, _ in nil }),
+			file: file,
+			line: line
+		)
+
+		// sublayers are only visible through snapshots
+		func sublayerRanges(of layer: LanguageLayer) -> [[NSRange]]? {
+			layer.snapshot()?.sublayerSnapshots.map { $0.rootSnapshot.tree.includedRanges.map(\.bytes.range) }
+		}
+
+		XCTAssertEqual(sublayerRanges(of: layer), sublayerRanges(of: freshLayer), file: file, line: line)
+
+		return resolution
 	}
 }
 

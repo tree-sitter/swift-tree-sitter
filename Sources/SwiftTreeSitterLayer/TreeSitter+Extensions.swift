@@ -61,6 +61,13 @@ extension Parser {
 	}
 }
 
+extension TSRange {
+	func overlaps(_ other: TSRange) -> Bool {
+		bytes.lowerBound == other.bytes.lowerBound ||
+			(bytes.lowerBound < other.bytes.upperBound && other.bytes.lowerBound < bytes.upperBound)
+	}
+}
+
 extension MutableTree {
 	var includedSet: IndexSet {
 		var set = IndexSet()

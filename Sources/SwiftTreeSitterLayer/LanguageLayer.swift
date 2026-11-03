@@ -339,7 +339,8 @@ extension LanguageLayer {
 		var invalidation = IndexSet()
 
 		for newTSRange in tsRanges {
-			allRanges.removeAll(where: { newTSRange.bytes.lowerBound == $0.bytes.lowerBound })
+			// included ranges must not overlap
+			allRanges.removeAll(where: { $0.overlaps(newTSRange) })
 
 			allRanges.append(newTSRange)
 
