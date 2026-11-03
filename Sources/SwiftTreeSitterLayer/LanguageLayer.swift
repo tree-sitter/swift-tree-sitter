@@ -374,7 +374,8 @@ extension LanguageLayer {
 		// they could be new, or could be updates to existing
 		for pair in groupedInjections {
 			let name = pair.0
-			let ranges = pair.value.map { $0.tsRange }
+			// the same injection is found again in each range of the set it intersects
+			let ranges = Set(pair.value.map { $0.tsRange }).sorted()
 
 			guard let sublayer = sublayers[name] else {
 				let set = try addNewSublayer(named: name, tsRanges: ranges, content: content)

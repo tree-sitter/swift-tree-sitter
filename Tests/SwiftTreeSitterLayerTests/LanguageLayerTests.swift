@@ -289,6 +289,41 @@ let c = "var c = 1"
 		XCTAssertEqual(highlights3, expected3)
 	}
 
+	func testResolvingInjectionAcrossDisjointSet() throws {
+		let config = LanguageLayer.Configuration(languageProvider: { name in
+			precondition(name == "swift")
+
+			return Self.swiftConfig
+		})
+
+		let layer = try LanguageLayer(languageConfig: Self.selfInjectingSwiftConfig, configuration: config)
+
+		let text = """
+let a = "var b = 1"
+"""
+		let content = LanguageLayer.Content(string: text)
+		let edit = InputEdit(
+			startByte: 0,
+			oldEndByte: 0,
+			newEndByte: 19*2,
+			startPoint: Point(0, 0),
+			oldEndPoint: Point(0, 0),
+			newEndPoint: Point(0, 19*2)
+		)
+
+		_ = layer.didChangeContent(content, using: edit, resolveSublayers: false)
+
+		// the injection intersects both ranges of the set
+		var set = IndexSet(integersIn: 9..<11)
+		set.insert(integersIn: 14..<16)
+
+		_ = try layer.resolveSublayers(with: content, in: set)
+
+		let ranges = layer.snapshot()?.sublayerSnapshots.map { $0.rootSnapshot.tree.includedRanges.map(\.bytes.range) }
+
+		XCTAssertEqual(ranges, [[NSRange(9..<18)]])
+	}
+
 	func testThrowsOnNoHighlightQuery() throws {
 		let language = Language(language: tree_sitter_swift())
 		let swiftConfig = LanguageConfiguration(
