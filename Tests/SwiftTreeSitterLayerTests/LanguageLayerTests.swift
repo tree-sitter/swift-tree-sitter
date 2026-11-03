@@ -289,6 +289,37 @@ let c = "var c = 1"
 		XCTAssertEqual(highlights3, expected3)
 	}
 
+	func testRemovingInjectionWithReplacement() throws {
+		let text = """
+let a = "var b = 1"
+"""
+
+		// turn the string into a comment
+		try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(0..<8), with: "// ")
+	}
+
+	func testRemovingInjectionLeavingEmptyRange() throws {
+		let text = """
+let a = "var b = 1"
+"""
+
+		// the edit collapses the included range
+		try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(8..<19), with: "1")
+	}
+
+	func testRemovingInjectionWithDeletion() throws {
+		let text = """
+let a = "var b = 1"
+// c
+let d = "var e = 2"
+"""
+
+		// join the last line to the comment, leaving the first injection as it is
+		let invalidation = try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(24..<25), with: "")
+
+		XCTAssertTrue(invalidation.contains(integersIn: 33..<42))
+	}
+
 	func testInsertingAtStartOfInjection() throws {
 		let text = """
 let a = "ar b = 1"
@@ -296,6 +327,24 @@ let a = "ar b = 1"
 
 		// the edited included range starts after the inserted character, but the injection does not
 		try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(9..<9), with: "v")
+	}
+
+	func testInsertingAtEndOfInjection() throws {
+		let text = """
+let a = "var b = 1"
+"""
+
+		// the edited included range takes in the interpolation, but the injection does not
+		try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(18..<18), with: #"\(x)"#)
+	}
+
+	func testSplittingInjection() throws {
+		let text = """
+let a = "var b = 1"
+"""
+
+		// the injection splits into two, both only touching the edited range
+		try assertIncrementalParseMatchesFreshParse(of: text, replacing: NSRange(14..<15), with: #"\(y)"#)
 	}
 
 	func testResolvingInjectionAcrossDisjointSet() throws {
