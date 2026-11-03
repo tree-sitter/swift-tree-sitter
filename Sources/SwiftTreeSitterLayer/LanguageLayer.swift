@@ -330,28 +330,47 @@ extension LanguageLayer {
 		return layer.parse(with: content, affecting: affectedSet, resolveSublayers: true)
 	}
 
-	private func encorporateRanges(_ tsRanges: [TSRange], content: Content) throws -> IndexSet {
+	private func encorporateRanges(_ tsRanges: [TSRange], in set: IndexSet, content: Content) throws -> IndexSet? {
 		guard let includedRanges = state.tree?.includedRanges else {
 			preconditionFailure("Cannot encorporateRanges into a layer that doesn't have any already defined")
 		}
 
-		var allRanges = includedRanges
+		var allRanges = [TSRange]()
 		var invalidation = IndexSet()
 
+		for tsRange in includedRanges {
+			// ranges within the set are stale unless they are found again, and included ranges must not overlap
+			if tsRange.intersects(set) || tsRanges.contains(where: { $0.overlaps(tsRange) }) {
+				invalidation.insert(integersIn: Range(tsRange.bytes.range)!)
+			} else {
+				allRanges.append(tsRange)
+			}
+		}
+
+		if tsRanges.isEmpty && allRanges.count == includedRanges.count {
+			return IndexSet()
+		}
+
 		for newTSRange in tsRanges {
-			allRanges.removeAll(where: { newTSRange.bytes.lowerBound == $0.bytes.lowerBound })
+			// the found ones could also overlap each other
+			allRanges.removeAll(where: { $0.overlaps(newTSRange) })
 
 			allRanges.append(newTSRange)
 
 			invalidation.insert(integersIn: Range(newTSRange.bytes.range)!)
 		}
 
+		// no ranges would make the parser include the entire document
+		if allRanges.isEmpty {
+			return nil
+		}
+
 		// included ranges must be sorted and the above algorithm does not guarantee that
 		self.parser.includedRanges = allRanges.sorted()
 
-		let set = parse(with: content)
+		let subset = parse(with: content)
 
-		invalidation.formUnion(set)
+		invalidation.formUnion(subset)
 
 		return invalidation
 	}
@@ -366,15 +385,29 @@ extension LanguageLayer {
 			return IndexSet()
 		}
 
+		// injections could have shrunk away from the set, so look for them in the entire ranges intersecting it
+		var searchSet = set
+
+		for sublayer in sublayers.values {
+			guard
+				let includedSet = sublayer.includedRangeSet,
+				set.rangeView.contains(where: { includedSet.intersects(integersIn: $0) })
+			else { continue }
+
+			for tsRange in sublayer.state.tree?.includedRanges ?? [] where tsRange.intersects(set) {
+				searchSet.insert(integersIn: Range(tsRange.bytes.range)!)
+			}
+		}
+
 		// injections must be shallow
-		let injections = try executeShallowQuery(.injections, in: set).injections(with: content.textProvider)
+		let injections = try executeShallowQuery(.injections, in: searchSet).injections(with: content.textProvider)
 		let groupedInjections = Dictionary(grouping: injections, by: { $0.name })
 		var invalidations = IndexSet()
 
-		// they could be new, or could be updates to existing
-		for pair in groupedInjections {
-			let name = pair.0
-			let ranges = pair.value.map { $0.tsRange }
+		// they could be new, could be updates to existing, or could be gone
+		for name in Set(sublayers.keys).union(groupedInjections.keys) {
+			// the same injection is found again in each range of the set it intersects
+			let ranges = Set(groupedInjections[name, default: []].map { $0.tsRange }).sorted()
 
 			guard let sublayer = sublayers[name] else {
 				let set = try addNewSublayer(named: name, tsRanges: ranges, content: content)
@@ -384,9 +417,15 @@ extension LanguageLayer {
 				continue
 			}
 
-			let set = try sublayer.encorporateRanges(ranges, content: content)
+			guard let subset = try sublayer.encorporateRanges(ranges, in: searchSet, content: content) else {
+				invalidations.formUnion(sublayer.includedRangeSet ?? IndexSet())
 
-			invalidations.formUnion(set)
+				self.sublayers[name] = nil
+
+				continue
+			}
+
+			invalidations.formUnion(subset)
 		}
 
 		return invalidations

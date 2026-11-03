@@ -61,6 +61,23 @@ extension Parser {
 	}
 }
 
+extension TSRange {
+	func intersects(_ set: IndexSet) -> Bool {
+		let range = bytes.range
+
+		if range.length == 0 {
+			return set.intersects(integersIn: max(range.location - 1, 0)..<range.location + 1)
+		}
+
+		return set.intersects(integersIn: Range(range)!)
+	}
+
+	func overlaps(_ other: TSRange) -> Bool {
+		bytes.lowerBound == other.bytes.lowerBound ||
+			(bytes.lowerBound < other.bytes.upperBound && other.bytes.lowerBound < bytes.upperBound)
+	}
+}
+
 extension MutableTree {
 	var includedSet: IndexSet {
 		var set = IndexSet()
